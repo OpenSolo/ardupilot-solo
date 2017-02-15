@@ -220,8 +220,14 @@ void OreoLED_PX4::update()
     }
 }
 
-// set_rgb - set color as a combination of red, green and blue values for one or all LEDs
+// set_rgb - set color as a combination of red, green and blue values for one or all LEDs, pattern defaults to solid color
 void OreoLED_PX4::set_rgb(uint8_t instance, uint8_t red, uint8_t green, uint8_t blue)
+{
+	set_rgb(instance, OREOLED_PATTERN_SOLID, red, green, blue);
+}
+
+// set_rgb - set color as a combination of red, green and blue values for one or all LEDs, using the specified pattern
+void OreoLED_PX4::set_rgb(uint8_t instance, oreoled_pattern pattern, uint8_t red, uint8_t green, uint8_t blue)
 {
     // return immediately if no healty leds
     if (!_overall_health) {
@@ -237,6 +243,7 @@ void OreoLED_PX4::set_rgb(uint8_t instance, uint8_t red, uint8_t green, uint8_t 
         for (uint8_t i=0; i<OREOLED_NUM_LEDS; i++) {
             if (_state_desired[i].mode != OREOLED_MODE_RGB || _state_desired[i].red != red || _state_desired[i].green != green || _state_desired[i].blue != blue) {
                 _state_desired[i].mode = OREOLED_MODE_RGB;
+                _state_desired[i].pattern = pattern;
                 _state_desired[i].red = red;
                 _state_desired[i].green = green;
                 _state_desired[i].blue = blue;
@@ -247,6 +254,7 @@ void OreoLED_PX4::set_rgb(uint8_t instance, uint8_t red, uint8_t green, uint8_t 
         // store desired rgb for one LED
         if (_state_desired[instance].mode != OREOLED_MODE_RGB || _state_desired[instance].red != red || _state_desired[instance].green != green || _state_desired[instance].blue != blue) {
             _state_desired[instance].mode = OREOLED_MODE_RGB;
+            _state_desired[instance].pattern = pattern;
             _state_desired[instance].red = red;
             _state_desired[instance].green = green;
             _state_desired[instance].blue = blue;
@@ -285,6 +293,48 @@ void OreoLED_PX4::set_macro(uint8_t instance, oreoled_macro macro)
             _state_desired[instance].mode = OREOLED_MODE_MACRO;
             _state_desired[instance].macro = macro;
             _send_required = true;
+        }
+    }
+
+    // release semaphore
+    _state_desired_semaphore = false;
+}
+
+// set_command - set custom command for one or all LEDs
+void OreoLED_PX4::set_command(uint8_t instance, uint8_t bytes_len, uint8_t *bytes)
+{
+    // return immediately if no healthy leds
+    if (!_overall_health) {
+        return;
+    }
+
+    // should never happen, given size of mavlink_led_control_t.custom_bytes,
+    // but let's be defensive
+    if (bytes_len > OREOLED_CMD_LENGTH_MAX) {
+        return;
+    }
+
+    // set semaphore
+    _state_desired_semaphore = true;
+
+    // check for all instances
+    if (instance == OREOLED_INSTANCE_ALL) {
+        // store desired macro for all LEDs
+        for (uint8_t i=0; i<OREOLED_NUM_LEDS; i++) {
+            if (_state_desired[i].mode != OREOLED_MODE_CUSTOM || _state_desired[i].bytes_len != bytes_len || memcmp(bytes, _state_desired[i].bytes, bytes_len != 0)) {
+                _state_desired[i].mode = OREOLED_MODE_CUSTOM;
+                _state_desired[i].bytes_len = bytes_len;
+                memcpy(_state_desired[i].bytes, bytes, bytes_len);
+                _send_required = true;
+            }
+        }
+    } else if (instance < OREOLED_NUM_LEDS) {
+        // store desired macro for one LED
+        if (_state_desired[instance].mode != OREOLED_MODE_CUSTOM || _state_desired[instance].bytes_len != bytes_len || memcmp(bytes, _state_desired[instance].bytes, bytes_len != 0)) {
+             _state_desired[instance].mode = OREOLED_MODE_CUSTOM;
+             _state_desired[instance].bytes_len = bytes_len;
+             memcpy(_state_desired[instance].bytes, bytes, bytes_len);
+             _send_required = true;
         }
     }
 
@@ -344,7 +394,7 @@ void OreoLED_PX4::update_timer(void)
                     break;
                 case OREOLED_MODE_RGB:
                     {
-                    oreoled_rgbset_t rgb_set = {i, OREOLED_PATTERN_SOLID, _state_desired[i].red, _state_desired[i].green, _state_desired[i].blue};
+                    oreoled_rgbset_t rgb_set = {i, _state_desired[i].pattern, _state_desired[i].red, _state_desired[i].green, _state_desired[i].blue};
                     ioctl(_oreoled_fd, OREOLED_SET_RGB, (unsigned long)&rgb_set);
                     }
                     break;
@@ -353,7 +403,14 @@ void OreoLED_PX4::update_timer(void)
                     ioctl(_oreoled_fd, OREOLED_FORCE_SYNC, 0);
                     }
                     break;
-            }
+                case OREOLED_MODE_CUSTOM:
+                    {
+                    oreoled_cmd_t cmd = {i, _state_desired[i].bytes_len};
+                    memcpy(cmd.buff, _state_desired[i].bytes, _state_desired[i].bytes_len);
+                    ioctl(_oreoled_fd, OREOLED_SEND_BYTES, (unsigned long)&cmd);
+                    }
+                    break;
+            };
             // save state change
             _state_sent[i] = _state_desired[i];
         }
@@ -386,13 +443,46 @@ void OreoLED_PX4::handle_led_control(mavlink_message_t *msg)
         return;
     }
 
-    // custom patterns not implemented
     if (packet.pattern == LED_CONTROL_PATTERN_CUSTOM) {
-        return;
-    }
+        // Here we handle two different "sub commands",
+        // depending on the bytes in the first CUSTOM_HEADER_LENGTH
+        // of the custom pattern byte buffer
 
-    // other patterns sent as macro
-    set_macro(packet.instance, (oreoled_macro)packet.pattern);
+        // Return if we don't have at least CUSTOM_HEADER_LENGTH bytes
+        if (packet.custom_len < CUSTOM_HEADER_LENGTH) {
+            return;
+        }
+
+        // check for the set RGB command
+        if (memcmp(packet.custom_bytes, "RGB0", CUSTOM_HEADER_LENGTH) == 0) {
+            // check to make sure the total length matches the length of the set RGB command + data values
+            if (packet.custom_len != 8) {
+                return;
+            }
+
+            // check for valid pattern id
+            if (packet.custom_bytes[CUSTOM_HEADER_LENGTH] >= OREOLED_PATTERN_ENUM_COUNT) {
+            return;
+            }
+
+            // convert the first byte after the command to a oreoled_pattern
+            oreoled_pattern pattern = static_cast<oreoled_pattern>(packet.custom_bytes[CUSTOM_HEADER_LENGTH]);
+
+            // call the set_rgb function, using the rest of the bytes as the RGB values
+            set_rgb(packet.instance, pattern, packet.custom_bytes[CUSTOM_HEADER_LENGTH + 1], packet.custom_bytes[CUSTOM_HEADER_LENGTH + 2], packet.custom_bytes[CUSTOM_HEADER_LENGTH + 3]);
+
+        } else if (memcmp(packet.custom_bytes, "CMD0", CUSTOM_HEADER_LENGTH) == 0) { // check for the send command function
+
+            // call the set_custom function
+            set_command(packet.instance, packet.custom_len - CUSTOM_HEADER_LENGTH, packet.custom_bytes + CUSTOM_HEADER_LENGTH);
+
+        } else { // unrecognized command
+            return;
+        }
+    } else {
+    	// other patterns sent as macro
+    	set_macro(packet.instance, (oreoled_macro)packet.pattern);
+    }
     _pattern_override = packet.pattern;
 }
 
