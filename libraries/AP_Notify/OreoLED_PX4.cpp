@@ -241,7 +241,7 @@ void OreoLED_PX4::set_rgb(uint8_t instance, oreoled_pattern pattern, uint8_t red
     if (instance == OREOLED_INSTANCE_ALL) {
         // store desired rgb for all LEDs
         for (uint8_t i=0; i<OREOLED_NUM_LEDS; i++) {
-            if (_state_desired[i].mode != OREOLED_MODE_RGB || _state_desired[i].red != red || _state_desired[i].green != green || _state_desired[i].blue != blue) {
+            if (_state_desired[i].mode != OREOLED_MODE_RGB || _state_desired[i].pattern != pattern || _state_desired[i].red != red || _state_desired[i].green != green || _state_desired[i].blue != blue) {
                 _state_desired[i].mode = OREOLED_MODE_RGB;
                 _state_desired[i].pattern = pattern;
                 _state_desired[i].red = red;
@@ -252,7 +252,7 @@ void OreoLED_PX4::set_rgb(uint8_t instance, oreoled_pattern pattern, uint8_t red
         }
     } else if (instance < OREOLED_NUM_LEDS) {
         // store desired rgb for one LED
-        if (_state_desired[instance].mode != OREOLED_MODE_RGB || _state_desired[instance].red != red || _state_desired[instance].green != green || _state_desired[instance].blue != blue) {
+        if (_state_desired[instance].mode != OREOLED_MODE_RGB || _state_desired[instance].pattern != pattern || _state_desired[instance].red != red || _state_desired[instance].green != green || _state_desired[instance].blue != blue) {
             _state_desired[instance].mode = OREOLED_MODE_RGB;
             _state_desired[instance].pattern = pattern;
             _state_desired[instance].red = red;
