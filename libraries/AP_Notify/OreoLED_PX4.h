@@ -56,24 +56,29 @@ private:
     void set_rgb(uint8_t instance, uint8_t red, uint8_t green, uint8_t blue);
 
     // set_rgb - set color as a combination of red, green and blue values for one or all LEDs, using the specified pattern
-    void set_rgb(uint8_t instance, oreoled_pattern pattern, uint8_t red, uint8_t green, uint8_t blue);
+    void set_rgb(uint8_t instance, enum oreoled_pattern pattern, uint8_t red, uint8_t green, uint8_t blue);
+
+    // set_rgb - set color as a combination of red, green and blue values for one or all LEDs, using the specified pattern and other parameters
+    void set_rgb(uint8_t instance, oreoled_pattern pattern, uint8_t red, uint8_t green, uint8_t blue,
+            uint8_t amplitude_red, uint8_t amplitude_green, uint8_t amplitude_blue,
+            uint16_t period, uint16_t phase_offset);
 
     // set_macro - set macro for one or all LEDs
     void set_macro(uint8_t instance, enum oreoled_macro macro);
 
-    // set_command - set custom command for one or all LEDs
-    void set_command(uint8_t instance, uint8_t bytes_len, uint8_t *bytes);
+    // send_sync - force a syncronisation of the all LED's
+    void send_sync();
 
-    // send_sync - force a syncronisation of the LEDs
-    void send_sync(void);
+    // Clear the desired state
+    void clear_state(void);
 
     // oreo led modes (pattern, macro or rgb)
     enum oreoled_mode {
-        OREOLED_MODE_PATTERN,
+        OREOLED_MODE_NONE,
         OREOLED_MODE_MACRO,
         OREOLED_MODE_RGB,
-        OREOLED_MODE_SYNC,
-		OREOLED_MODE_CUSTOM
+        OREOLED_MODE_RGB_EXTENDED,
+        OREOLED_MODE_SYNC
     };
 
     // oreo_state structure holds possible state of an led
@@ -84,13 +89,73 @@ private:
         uint8_t red;
         uint8_t green;
         uint8_t blue;
-        uint8_t bytes_len;
-        uint8_t bytes[OREOLED_CMD_LENGTH_MAX]; /* data for send_bytes ioctl */
+        uint8_t amplitude_red;
+        uint8_t amplitude_green;
+        uint8_t amplitude_blue;
+        uint16_t period;
+        int8_t repeat;
+        uint16_t phase_offset;
+
+        inline oreo_state() {
+            clear_state();
+        }
+
+        inline void clear_state() {
+            mode = OREOLED_MODE_NONE;
+            pattern = OREOLED_PATTERN_OFF;
+            macro = OREOLED_PARAM_MACRO_RESET;
+            red = 0;
+            green = 0;
+            blue = 0;
+            amplitude_red = 0;
+            amplitude_green = 0;
+            amplitude_blue = 0;
+            period = 0;
+            repeat = 0;
+            phase_offset = 0;
+        }
+
+        inline void send_sync() {
+            clear_state();
+            mode = OREOLED_MODE_SYNC;
+        }
+
+        inline void set_macro(oreoled_macro new_macro) {
+            clear_state();
+            mode = OREOLED_MODE_MACRO;
+            macro = new_macro;
+        }
+
+        inline void set_rgb(enum oreoled_pattern new_pattern, uint8_t new_red, uint8_t new_green, uint8_t new_blue) {
+            clear_state();
+            mode = OREOLED_MODE_RGB;
+            pattern = new_pattern;
+            red = new_red;
+            green = new_green;
+            blue = new_blue;
+        }
+
+        inline void set_rgb(enum oreoled_pattern new_pattern, uint8_t new_red, uint8_t new_green,
+                uint8_t new_blue, uint8_t new_amplitude_red, uint8_t new_amplitude_green, uint8_t new_amplitude_blue,
+                uint16_t new_period, uint16_t new_phase_offset) {
+            clear_state();
+            mode = OREOLED_MODE_RGB_EXTENDED;
+            pattern = new_pattern;
+            red = new_red;
+            green = new_green;
+            blue = new_blue;
+            amplitude_red = new_amplitude_red;
+            amplitude_green = new_amplitude_green;
+            amplitude_blue = new_amplitude_blue;
+            period = new_period;
+            phase_offset = new_phase_offset;
+        }
 
         // operator==
         inline bool operator==(const oreo_state &os) {
            return ((os.mode==mode) && (os.pattern==pattern) && (os.macro==macro) && (os.red==red) && (os.green==green) && (os.blue==blue)
-        		   && (os.bytes_len==bytes_len) && memcmp(os.bytes, bytes, sizeof(bytes)));
+        		   && (os.amplitude_red==amplitude_red) && (os.amplitude_green==amplitude_green) && (os.amplitude_blue==amplitude_blue)
+        		   && (os.period==period) && (os.repeat==repeat) && (os.phase_offset==phase_offset));
         }
     };
 
