@@ -414,12 +414,14 @@ void OreoLED_PX4::update_timer(void)
                     cmd.buff[10] = _state_desired[i].amplitude_green;
                     cmd.buff[11] = OREOLED_PARAM_AMPLITUDE_BLUE;
                     cmd.buff[12] = _state_desired[i].amplitude_blue;
+                    // Note: The Oreo LED controller expects to receive uint16 values
+                    // in little endian order
                     cmd.buff[13] = OREOLED_PARAM_PERIOD;
-                    cmd.buff[14] = (_state_desired[i].period & 0x00FF);
-                    cmd.buff[15] = (_state_desired[i].period & 0xFF00) >> 8;
+                    cmd.buff[14] = (_state_desired[i].period & 0xFF00) >> 8;
+                    cmd.buff[15] = (_state_desired[i].period & 0x00FF);
                     cmd.buff[16] = OREOLED_PARAM_PHASEOFFSET;
-                    cmd.buff[17] = (_state_desired[i].phase_offset & 0x00FF);
-                    cmd.buff[18] = (_state_desired[i].phase_offset & 0xFF00) >> 8;
+                    cmd.buff[17] = (_state_desired[i].phase_offset & 0xFF00) >> 8;
+                    cmd.buff[18] = (_state_desired[i].phase_offset & 0x00FF);
                     cmd.num_bytes = 19;
                     ioctl(_oreoled_fd, OREOLED_SEND_BYTES, (unsigned long)&cmd);
                     }
@@ -508,12 +510,14 @@ void OreoLED_PX4::handle_led_control(mavlink_message_t *msg)
             // convert the first byte after the command to a oreoled_pattern
             oreoled_pattern pattern = (oreoled_pattern)packet.custom_bytes[CUSTOM_HEADER_LENGTH];
 
+            // uint16_t values are stored in custom_bytes in little endian order
+            // assume the flight controller is little endian when decoding values
             uint16_t period =
-                    (0x00FF & (uint16_t)packet.custom_bytes[CUSTOM_HEADER_LENGTH + 7]) |
-                    ((0x00FF & (uint16_t)packet.custom_bytes[CUSTOM_HEADER_LENGTH + 8]) << 8);
+                    ((0x00FF & (uint16_t)packet.custom_bytes[CUSTOM_HEADER_LENGTH + 7]) << 8) |
+                    (0x00FF & (uint16_t)packet.custom_bytes[CUSTOM_HEADER_LENGTH + 8]);
             uint16_t phase_offset =
-                    (0x00FF & (uint16_t)packet.custom_bytes[CUSTOM_HEADER_LENGTH + 9]) |
-                    ((0x00FF & (uint16_t)packet.custom_bytes[CUSTOM_HEADER_LENGTH + 10]) << 8);
+                    ((0x00FF & (uint16_t)packet.custom_bytes[CUSTOM_HEADER_LENGTH + 9]) << 8) |
+                    (0x00FF & (uint16_t)packet.custom_bytes[CUSTOM_HEADER_LENGTH + 10]);
 
             // call the set_rgb function, using the rest of the bytes as the RGB values
             set_rgb(packet.instance, pattern, packet.custom_bytes[CUSTOM_HEADER_LENGTH + 1], packet.custom_bytes[CUSTOM_HEADER_LENGTH + 2],
