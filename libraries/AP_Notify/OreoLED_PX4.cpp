@@ -539,4 +539,66 @@ void OreoLED_PX4::handle_led_control(mavlink_message_t *msg)
     _pattern_override = packet.pattern;
 }
 
+OreoLED_PX4::oreo_state::oreo_state() {
+    clear_state();
+}
+
+void OreoLED_PX4::oreo_state::clear_state() {
+    mode = OREOLED_MODE_NONE;
+    pattern = OREOLED_PATTERN_OFF;
+    macro = OREOLED_PARAM_MACRO_RESET;
+    red = 0;
+    green = 0;
+    blue = 0;
+    amplitude_red = 0;
+    amplitude_green = 0;
+    amplitude_blue = 0;
+    period = 0;
+    repeat = 0;
+    phase_offset = 0;
+}
+
+void OreoLED_PX4::oreo_state::send_sync() {
+    clear_state();
+    mode = OREOLED_MODE_SYNC;
+}
+
+void OreoLED_PX4::oreo_state::set_macro(oreoled_macro new_macro) {
+    clear_state();
+    mode = OREOLED_MODE_MACRO;
+    macro = new_macro;
+}
+
+void OreoLED_PX4::oreo_state::set_rgb(enum oreoled_pattern new_pattern, uint8_t new_red, uint8_t new_green, uint8_t new_blue) {
+    clear_state();
+    mode = OREOLED_MODE_RGB;
+    pattern = new_pattern;
+    red = new_red;
+    green = new_green;
+    blue = new_blue;
+}
+
+void OreoLED_PX4::oreo_state::set_rgb(enum oreoled_pattern new_pattern, uint8_t new_red, uint8_t new_green,
+        uint8_t new_blue, uint8_t new_amplitude_red, uint8_t new_amplitude_green, uint8_t new_amplitude_blue,
+        uint16_t new_period, uint16_t new_phase_offset) {
+    clear_state();
+    mode = OREOLED_MODE_RGB_EXTENDED;
+    pattern = new_pattern;
+    red = new_red;
+    green = new_green;
+    blue = new_blue;
+    amplitude_red = new_amplitude_red;
+    amplitude_green = new_amplitude_green;
+    amplitude_blue = new_amplitude_blue;
+    period = new_period;
+    phase_offset = new_phase_offset;
+}
+
+// operator==
+bool OreoLED_PX4::oreo_state::operator==(const OreoLED_PX4::oreo_state &os) {
+   return ((os.mode==mode) && (os.pattern==pattern) && (os.macro==macro) && (os.red==red) && (os.green==green) && (os.blue==blue)
+           && (os.amplitude_red==amplitude_red) && (os.amplitude_green==amplitude_green) && (os.amplitude_blue==amplitude_blue)
+           && (os.period==period) && (os.repeat==repeat) && (os.phase_offset==phase_offset));
+}
+
 #endif // CONFIG_HAL_BOARD == HAL_BOARD_PX4
