@@ -1,6 +1,19 @@
-#Ardupilot Solo
+# Ardupilot Solo
 
-[![Build Status](https://travis-ci.org/3drobotics/ardupilot-solo.svg?branch=master)](https://travis-ci.org/3drobotics/ardupilot-solo)
+[![Build Status](https://travis-ci.org/OpenSolo/ardupilot-solo.svg?branch=master)](https://travis-ci.org/OpenSolo/ardupilot-solo)
+
+### 3DR's creation of ArduPilot-Solo
+ArduPilot-Solo is a fork of [ArduPilot](https://www.github.com/ArduPilot/ArduPilot), customized by 3DR for the Solo. This was forked in 2015, making it an early beta of ArduCopter 3.3. It has not been rebased and kept up to date with [ArduPilot](https://www.github.com/ArduPilot/ArduPilot) since then.  The most recent release from 3DR for the consumer Solo is v1.3.1.  The most recent release from 3DR for the site scan Solo is 1.5.3.
+
+### Open Solo Era
+Since 3DR open sourced the Solo and ceased maintaining it themselves, the ArduPilot-Solo repository has been duplicated here, taking over the upkeep.  There is not a whole lot of changes and enhancements that can be made due to it's age.  [ArduPilot](https://www.github.com/ArduPilot/ArduPilot) development is now on version 3.6, many years ahead of where 3DR left off with this.  Extensive changes have been made across the [ArduPilot](https://www.github.com/ArduPilot/ArduPilot) codebase that cannot be backported to ArduPilot-Solo. The Open Solo team is doing what it can to make it as useful as possible.
+- Updated parameters to make the consumer Solos able to fly the latest release that was previously only available to Site Scan commercial Solos.  The features that adds to consumer solos are things like distance based battery failsafe and improved landing detection.
+- Adding the LED control scripts and handling by @hugheaves.
+- Packaging the final product with Open Solo for use on stock Solos (not green cubes)
+- Open Solo 3.0.0 includes release version 1.5.4 of ArduPilot-Solo for the stock cubes.
+
+See the releases section for compiled binaries to download if you wish. https://github.com/OpenSolo/ardupilot-solo/releases.
+
 
 ## How to access Solo
 
@@ -11,61 +24,19 @@
 | Solo | 10.1.1.10 |
 | Controller | 10.1.1.1 |
 
-### Default root password
+#### Default root password
 
 > TjSDBkAu
 
-## How to load to Pixhawk 2 on Solo
+### How to load to Pixhawk 2 on Solo
 
 - Make sure you are running at least Solo version v1.0.0 (from app)
 - Copy your firmware to **/firmware** on Solo (10.1.1.10)
 - Reboot Solo
 - After reboot the LED's on SOLO should change colours (party mode)
-
 ---
 
-#ArduPilot Project#
-
-[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/diydrones/ardupilot?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-
-### The ArduPilot project is made up of: ###
->>ArduCopter (or APM:Copter) : [code](https://github.com/diydrones/ardupilot/tree/master/ArduCopter), [wiki](http://copter.ardupilot.com)
-
->>ArduPlane (or APM:Plane) : [code](https://github.com/diydrones/ardupilot/tree/master/ArduPlane), [wiki](http://plane.ardupilot.com)
-
->>ArduRover (or APMrover2) : [code](https://github.com/diydrones/ardupilot/tree/master/APMrover2), [wiki](http://rover.ardupilot.com)
-
->>Antenna Tracker : [code](https://github.com/diydrones/ardupilot/tree/master/AntennaTracker), [wiki](http://copter.ardupilot.com/wiki/common-antennatracker-introduction)
-
-### User Support & Discussion Forums ###
->>APM Forum: [http://ardupilot.com/forum/index.php](http://ardupilot.com/forum/index.php)
-
->>Community Site: [http://diydrones.com](http://diydrones.com)
-
-### Developer Information ###
->>Github repository: [https://github.com/diydrones/ardupilot](https://github.com/diydrones/ardupilot)
-
->>Main developer wiki: [http://dev.ardupilot.com](http://dev.ardupilot.com)
-
->>Developer email group: drones-discuss@googlegroups.com
-
-### Contributors ###
->>[Github statistics](https://github.com/diydrones/ardupilot/graphs/contributors)
-
-### How To Get Involved ###
->>The ArduPilot project is open source and we encourage participation and code contributions: [guidelines for contributors to the ardupilot codebase](http://dev.ardupilot.com/wiki/guidelines-for-contributors-to-the-apm-codebase)
-
->>We have an active group of Beta Testers especially for ArduCopter to help us find bugs: [release procedures](http://dev.ardupilot.com/wiki/release-procedures)
-
->>Desired Enhancements and Bugs can be posted to the [issues list](https://github.com/diydrones/ardupilot/issues).
-
->>Helping other users with log analysis on [diydrones.com](http://www.diydrones.com) and the [APM forums ](http://ardupilot.com/forum/index.php) is always appreciated:
-
->>There is a group of wiki editors as well in case documentation is your thing: ardu-wiki-editors@googlegroups.com
-
->>Developer discussions occur on drones-discuss@google-groups.com
-
-### License ###
+## License
 >>[Overview of license](http://dev.ardupilot.com/wiki/license-gplv3)
 
 >>[Full Text](https://github.com/diydrones/ardupilot/blob/master/COPYING.txt)
