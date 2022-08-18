@@ -3,13 +3,13 @@
      <include>common.xml</include>
      <!-- note that APM specific messages should use the command id
       range from 150 to 250, to leave plenty of room for growth
-      of common.xml 
+      of common.xml
 
       If you prototype a message here, then you should consider if it
       is general enough to move into common.xml later
     -->
 
-	<enums>
+  <enums>
 
           <!-- ardupilot specific MAV_CMD_* commands -->
           <enum name="MAV_CMD">
@@ -45,6 +45,9 @@
                 <param index="7">Empty</param>
             </entry>
 
+            <!-- MAV_CMD_SOLO_BTN_* are here to provide vendor-specific support
+            for 3DR Solo until a better solution is found to atomically make
+            multiple commands with control flow -->
             <entry name="MAV_CMD_SOLO_BTN_FLY_CLICK" value="42001">
                 <description>FLY button has been clicked.</description>
                 <param index="1">Empty</param>
@@ -122,6 +125,17 @@
                 <param index="7">Empty</param>
             </entry>
 
+            <entry value="42501" name="MAV_CMD_GIMBAL_RESET">
+                <description>Causes the gimbal to reset and boot as if it was just powered on</description>
+                <param index="1">Empty</param>
+                <param index="2">Empty</param>
+                <param index="3">Empty</param>
+                <param index="4">Empty</param>
+                <param index="5">Empty</param>
+                <param index="6">Empty</param>
+                <param index="7">Empty</param>
+            </entry>
+            
             <entry name="MAV_CMD_SET_FACTORY_TEST_MODE" value="42427">
                 <description>Command autopilot to get into factory test/diagnostic mode</description>
                 <param index="1">0 means get out of test mode, 1 means get into test mode</param>
@@ -132,6 +146,38 @@
                 <param index="6">Empty</param>
                 <param index="7">Empty</param>
             </entry>
+
+            <entry value="42502" name="MAV_CMD_GIMBAL_AXIS_CALIBRATION_STATUS">
+                <description> Reports progress and success or failure of gimbal axis calibration procedure</description>
+                <param index="1">Gimbal axis we're reporting calibration progress for</param>
+                <param index="2">Current calibration progress for this axis, 0x64=100%</param>
+                <param index="3">Status of the calibration</param>
+                <param index="4">Empty</param>
+                <param index="5">Empty</param>
+                <param index="6">Empty</param>
+                <param index="7">Empty</param>
+            </entry>
+            <entry value="42503" name="MAV_CMD_GIMBAL_REQUEST_AXIS_CALIBRATION">
+                <description>  Starts commutation calibration on the gimbal </description>
+                <param index="1">Empty</param>
+                <param index="2">Empty</param>
+                <param index="3">Empty</param>
+                <param index="4">Empty</param>
+                <param index="5">Empty</param>
+                <param index="6">Empty</param>
+                <param index="7">Empty</param>
+            </entry>
+            <entry value="42505" name="MAV_CMD_GIMBAL_FULL_RESET">
+                <description>  Erases gimbal application and parameters </description>
+                <param index="1">Magic number</param>
+                <param index="2">Magic number</param>
+                <param index="3">Magic number</param>
+                <param index="4">Magic number</param>
+                <param index="5">Magic number</param>
+                <param index="6">Magic number</param>
+                <param index="7">Magic number</param>
+            </entry>
+
           </enum>
 	  
 	  	<!--  AP_Limits Enums -->
@@ -151,12 +197,29 @@
 		<entry name="LIMIT_ALTITUDE" value="4"> <description> checking limits</description></entry>
 	</enum>
 
-	<!-- RALLY flags - power of 2 (1,2,4,8,16,32,64,128) so we can send as a bitfield -->
+      <!--  AP_Limits Enums -->
+  <enum name="LIMITS_STATE">
+    <entry name="LIMITS_INIT" value="0"> <description> pre-initialization</description></entry>
+    <entry name="LIMITS_DISABLED" value="1"> <description> disabled</description></entry>
+    <entry name="LIMITS_ENABLED" value="2"> <description> checking limits</description></entry>
+    <entry name="LIMITS_TRIGGERED" value="3"> <description> a limit has been breached</description></entry>
+    <entry name="LIMITS_RECOVERING" value="4"> <description> taking action eg. RTL</description></entry>
+    <entry name="LIMITS_RECOVERED" value="5"> <description> we're no longer in breach of a limit</description></entry>
+  </enum>
+
+  <!--  AP_Limits Modules - power of 2 (1,2,4,8,16,32 etc) so we can send as bitfield -->
+  <enum name="LIMIT_MODULE">
+    <entry name="LIMIT_GPSLOCK" value="1"> <description> pre-initialization</description></entry>
+    <entry name="LIMIT_GEOFENCE" value="2"> <description> disabled</description></entry>
+    <entry name="LIMIT_ALTITUDE" value="4"> <description> checking limits</description></entry>
+  </enum>
+
+  <!-- RALLY flags - power of 2 (1,2,4,8,16,32,64,128) so we can send as a bitfield -->
         <enum name="RALLY_FLAGS">
           <description>Flags in RALLY_POINT message</description>
           <entry name="FAVORABLE_WIND" value="1"> <description>Flag set when requiring favorable winds for landing. </description></entry>
           <entry name="LAND_IMMEDIATELY" value="2"> <description>Flag set when plane is to immediately descend to break altitude and land without GCS intervention.  Flag not set when plane is to loiter at Rally point until commanded to land.</description></entry>
-	</enum>
+  </enum>
 
     <!-- parachute action enum -->
     <enum name="PARACHUTE_ACTION">
@@ -216,72 +279,66 @@
     </enum>
 
     <!-- Gimbal payload enumerations -->
-	<enum name="MAV_MODE_GIMBAL">
-		<entry name="MAV_MODE_GIMBAL_UNINITIALIZED" value="0">
-			<description>Gimbal is powered on but has not started initializing yet</description>
-		</entry>
-		<entry name="MAV_MODE_GIMBAL_CALIBRATING_PITCH" value="1">
-			<description>Gimbal is currently running calibration on the pitch axis</description>
-		</entry>
-		<entry name="MAV_MODE_GIMBAL_CALIBRATING_ROLL" value="2">
-			<description>Gimbal is currently running calibration on the roll axis</description>
-		</entry>
-		<entry name="MAV_MODE_GIMBAL_CALIBRATING_YAW" value="3">
-			<description>Gimbal is currently running calibration on the yaw axis</description>
-		</entry>
-		<entry name="MAV_MODE_GIMBAL_INITIALIZED" value="4">
-			<description>Gimbal has finished calibrating and initializing, but is relaxed pending reception of first rate command from copter</description>
-		</entry>
-		<entry name="MAV_MODE_GIMBAL_ACTIVE" value="5">
-			<description>Gimbal is actively stabilizing</description>
-		</entry>
-		<entry name="MAV_MODE_GIMBAL_RATE_CMD_TIMEOUT" value="6">
-			<description>Gimbal is relaxed because it missed more than 10 expected rate command messages in a row.  Gimbal will move back to active mode when it receives a new rate command</description>
-		</entry>
-	</enum>
-	
-	<enum name="GIMBAL_AXIS">
-		<entry name="GIMBAL_AXIS_YAW" value="0">
-			<description>Gimbal yaw axis</description>
-		</entry>
-		<entry name="GIMBAL_AXIS_PITCH" value="1">
-			<description>Gimbal pitch axis</description>
-		</entry>
-		<entry name="GIMBAL_AXIS_ROLL" value="2">
-			<description>Gimbal roll axis</description>
-		</entry> 
-	</enum>
-	
-	<enum name="GIMBAL_AXIS_CALIBRATION_STATUS">
-		<entry name="GIMBAL_AXIS_CALIBRATION_STATUS_IN_PROGRESS" value="0">
-			<description>Axis calibration is in progress</description>
-		</entry>
-		<entry name="GIMBAL_AXIS_CALIBRATION_STATUS_SUCCEEDED" value="1">
-			<description>Axis calibration succeeded</description>
-		</entry>
-		<entry name="GIMBAL_AXIS_CALIBRATION_STATUS_FAILED" value="2">
-			<description>Axis calibration failed</description>
-		</entry>
-	</enum>
-	
-	<enum name="FACTORY_TEST">
-		<entry name="FACTORY_TEST_AXIS_RANGE_LIMITS" value="0">
-			<description>Tests to make sure each axis can move to its mechanical limits</description>
-		</entry>
-	</enum>
-	
-	<enum name="GIMBAL_AXIS_CALIBRATION_REQUIRED">
-		<entry name="GIMBAL_AXIS_CALIBRATION_REQUIRED_UNKNOWN" value="0">
-			<description>Whether or not this axis requires calibration is unknown at this time</description>
-		</entry>
-		<entry name="GIMBAL_AXIS_CALIBRATION_REQUIRED_TRUE" value="1">
-			<description>This axis requires calibration</description>
-		</entry>
-		<entry name="GIMBAL_AXIS_CALIBRATION_REQUIRED_FALSE" value="2">
-			<description>This axis does not require calibration</description>
-		</entry>
-	</enum>
-	
+  <enum name="MAV_MODE_GIMBAL">
+    <entry name="MAV_MODE_GIMBAL_UNINITIALIZED" value="0">
+      <description>Gimbal is powered on but has not started initializing yet</description>
+    </entry>
+    <entry name="MAV_MODE_GIMBAL_CALIBRATING_PITCH" value="1">
+      <description>Gimbal is currently running calibration on the pitch axis</description>
+    </entry>
+    <entry name="MAV_MODE_GIMBAL_CALIBRATING_ROLL" value="2">
+      <description>Gimbal is currently running calibration on the roll axis</description>
+    </entry>
+    <entry name="MAV_MODE_GIMBAL_CALIBRATING_YAW" value="3">
+      <description>Gimbal is currently running calibration on the yaw axis</description>
+    </entry>
+    <entry name="MAV_MODE_GIMBAL_INITIALIZED" value="4">
+      <description>Gimbal has finished calibrating and initializing, but is relaxed pending reception of first rate command from copter</description>
+    </entry>
+    <entry name="MAV_MODE_GIMBAL_ACTIVE" value="5">
+      <description>Gimbal is actively stabilizing</description>
+    </entry>
+    <entry name="MAV_MODE_GIMBAL_RATE_CMD_TIMEOUT" value="6">
+      <description>Gimbal is relaxed because it missed more than 10 expected rate command messages in a row.  Gimbal will move back to active mode when it receives a new rate command</description>
+    </entry>
+  </enum>
+
+  <enum name="GIMBAL_AXIS">
+    <entry name="GIMBAL_AXIS_YAW" value="0">
+      <description>Gimbal yaw axis</description>
+    </entry>
+    <entry name="GIMBAL_AXIS_PITCH" value="1">
+      <description>Gimbal pitch axis</description>
+    </entry>
+    <entry name="GIMBAL_AXIS_ROLL" value="2">
+      <description>Gimbal roll axis</description>
+    </entry>
+  </enum>
+
+  <enum name="GIMBAL_AXIS_CALIBRATION_STATUS">
+    <entry name="GIMBAL_AXIS_CALIBRATION_STATUS_IN_PROGRESS" value="0">
+      <description>Axis calibration is in progress</description>
+    </entry>
+    <entry name="GIMBAL_AXIS_CALIBRATION_STATUS_SUCCEEDED" value="1">
+      <description>Axis calibration succeeded</description>
+    </entry>
+    <entry name="GIMBAL_AXIS_CALIBRATION_STATUS_FAILED" value="2">
+      <description>Axis calibration failed</description>
+    </entry>
+  </enum>
+
+  <enum name="GIMBAL_AXIS_CALIBRATION_REQUIRED">
+    <entry name="GIMBAL_AXIS_CALIBRATION_REQUIRED_UNKNOWN" value="0">
+      <description>Whether or not this axis requires calibration is unknown at this time</description>
+    </entry>
+    <entry name="GIMBAL_AXIS_CALIBRATION_REQUIRED_TRUE" value="1">
+      <description>This axis requires calibration</description>
+    </entry>
+    <entry name="GIMBAL_AXIS_CALIBRATION_REQUIRED_FALSE" value="2">
+      <description>This axis does not require calibration</description>
+    </entry>
+  </enum>
+
     <!-- GoPro System Enumerations -->
     <enum name="GOPRO_HEARTBEAT_STATUS">
       <entry name="GOPRO_HEARTBEAT_STATUS_DISCONNECTED" value="0">
@@ -717,7 +774,7 @@
         <entry name="LED_CONTROL_PATTERN_CUSTOM" value="255"> <description>Custom Pattern using custom bytes fields</description></entry>
     </enum>
 
-	<!-- EKF_STATUS_FLAGS - these values should be bit-and with the messages flags field to know if flag has been set -->
+  <!-- EKF_STATUS_FLAGS - these values should be bit-and with the messages flags field to know if flag has been set -->
     <enum name="EKF_STATUS_FLAGS">
         <description>Flags in EKF_STATUS message</description>
         <entry name="EKF_ATTITUDE" value="1"> <description>set if EKF's attitude estimate is good</description></entry>
@@ -730,7 +787,7 @@
         <entry name="EKF_CONST_POS_MODE" value="128"> <description>EKF is in constant position mode and does not know it's absolute or relative position</description></entry>
         <entry name="EKF_PRED_POS_HORIZ_REL" value="256"> <description>set if EKF's predicted horizontal position (relative) estimate is good</description></entry>
         <entry name="EKF_PRED_POS_HORIZ_ABS" value="512"> <description>set if EKF's predicted horizontal position (absolute) estimate is good</description></entry>
-	</enum>
+  </enum>
 
     <enum name="MAG_CAL_STATUS">
         <entry name="MAG_CAL_NOT_STARTED" value="0"></entry>
@@ -741,29 +798,35 @@
         <entry name="MAG_CAL_FAILED" value="5"></entry>
     </enum>
 
-    <enum name="MAV_REMOTE_LOG_DATA_BLOCK_COMMANDS">
-      <description>Special ACK block numbers control activation of dataflash log streaming</description>
-      <!-- C uses signed integers for enumerations; these constants
-	   start at MAX_INT32_T and go down -->
-      <!-- 2^31-3 == 2147483645 -->
-      <entry value="2147483645" name="MAV_REMOTE_LOG_DATA_BLOCK_STOP">
-        <description>UAV to stop sending DataFlash blocks</description>
-      </entry>
-      <!-- 2^31-2 == 2147483646 -->
-      <entry value="2147483646" name="MAV_REMOTE_LOG_DATA_BLOCK_START">
-        <description>UAV to start sending DataFlash blocks</description>
-      </entry>
-      <!-- MAV_REMOTE_LOG_DATA_BLOCK_COMMANDS_ENUM_END will be 2^31-1 == 2147483647 -->
-    </enum>
-    <enum name="MAV_REMOTE_LOG_DATA_BLOCK_STATUSES">
-      <description>Possible remote log data block statuses</description>
-      <entry value="0" name="MAV_REMOTE_LOG_DATA_BLOCK_NACK">
-        <description>This block has NOT been received</description>
-      </entry>
-      <entry value="1" name="MAV_REMOTE_LOG_DATA_BLOCK_ACK">
-        <description>This block has been received</description>
-      </entry>
-    </enum>
+        <enum name="PID_TUNING_AXIS">
+          <entry name="PID_TUNING_ROLL"  value="1"></entry>
+          <entry name="PID_TUNING_PITCH" value="2"></entry>
+          <entry name="PID_TUNING_YAW"   value="3"></entry>
+        </enum>
+
+      <enum name="MAV_REMOTE_LOG_DATA_BLOCK_COMMANDS">
+        <description>Special ACK block numbers control activation of dataflash log streaming</description>
+	<!-- C uses signed integers for enumerations; these constants
+	     start at MAX_INT32_T and go down -->
+	<!-- 2^31-3 == 2147483645 -->
+        <entry value="2147483645" name="MAV_REMOTE_LOG_DATA_BLOCK_STOP">
+          <description>UAV to stop sending DataFlash blocks</description>
+        </entry>
+	<!-- 2^31-2 == 2147483646 -->
+        <entry value="2147483646" name="MAV_REMOTE_LOG_DATA_BLOCK_START">
+          <description>UAV to start sending DataFlash blocks</description>
+        </entry>
+	<!-- MAV_REMOTE_LOG_DATA_BLOCK_COMMANDS_ENUM_END will be 2^31-1 == 2147483647 -->
+      </enum>
+      <enum name="MAV_REMOTE_LOG_DATA_BLOCK_STATUSES">
+        <description>Possible remote log data block statuses</description>
+        <entry value="0" name="MAV_REMOTE_LOG_DATA_BLOCK_NACK">
+          <description>This block has NOT been received</description>
+        </entry>
+        <entry value="1" name="MAV_REMOTE_LOG_DATA_BLOCK_ACK">
+          <description>This block has been received</description>
+        </entry>
+      </enum>
 
       </enums>
 
@@ -810,96 +873,100 @@
                <field type="uint16_t" name="adc6">ADC output 6</field>
           </message>
 
-	  <!-- Camera Controller Messages -->
-	  <message name="DIGICAM_CONFIGURE" id="154">
-	    <description>Configure on-board Camera Control System.</description>
-	    <field name="target_system" type="uint8_t">System ID</field>      
-	    <field name="target_component" type="uint8_t">Component ID</field>
-	    <field name="mode" type="uint8_t">Mode enumeration from 1 to N //P, TV, AV, M, Etc (0 means ignore)</field>
-	    <field name="shutter_speed" type="uint16_t">Divisor number //e.g. 1000 means 1/1000 (0 means ignore)</field>
-	    <field name="aperture" type="uint8_t">F stop number x 10 //e.g. 28 means 2.8 (0 means ignore)</field>
-	    <field name="iso" type="uint8_t">ISO enumeration from 1 to N //e.g. 80, 100, 200, Etc (0 means ignore)</field>
-	    <field name="exposure_type" type="uint8_t">Exposure type enumeration from 1 to N (0 means ignore)</field>
-	    <field name="command_id" type="uint8_t">Command Identity (incremental loop: 0 to 255)//A command sent multiple times will be executed or pooled just once</field>
- 	    <field name="engine_cut_off" type="uint8_t">Main engine cut-off time before camera trigger in seconds/10 (0 means no cut-off)</field>
-	    <field name="extra_param" type="uint8_t">Extra parameters enumeration (0 means ignore)</field>
-	    <field name="extra_value" type="float">Correspondent value to given extra_param</field>
-	  </message>
+    <!-- Camera Controller Messages -->
+    <message name="DIGICAM_CONFIGURE" id="154">
+      <description>Configure on-board Camera Control System.</description>
+      <field name="target_system" type="uint8_t">System ID</field>
+      <field name="target_component" type="uint8_t">Component ID</field>
+      <field name="mode" type="uint8_t">Mode enumeration from 1 to N //P, TV, AV, M, Etc (0 means ignore)</field>
+      <field name="shutter_speed" type="uint16_t">Divisor number //e.g. 1000 means 1/1000 (0 means ignore)</field>
+      <field name="aperture" type="uint8_t">F stop number x 10 //e.g. 28 means 2.8 (0 means ignore)</field>
+      <field name="iso" type="uint8_t">ISO enumeration from 1 to N //e.g. 80, 100, 200, Etc (0 means ignore)</field>
+      <field name="exposure_type" type="uint8_t">Exposure type enumeration from 1 to N (0 means ignore)</field>
+      <field name="command_id" type="uint8_t">Command Identity (incremental loop: 0 to 255)//A command sent multiple times will be executed or pooled just once</field>
+      <field name="engine_cut_off" type="uint8_t">Main engine cut-off time before camera trigger in seconds/10 (0 means no cut-off)</field>
+      <field name="extra_param" type="uint8_t">Extra parameters enumeration (0 means ignore)</field>
+      <field name="extra_value" type="float">Correspondent value to given extra_param</field>
+    </message>
 
-	  <message name="DIGICAM_CONTROL" id="155">
-	    <description>Control on-board Camera Control System to take shots.</description>
-	    <field name="target_system" type="uint8_t">System ID</field>
-	    <field name="target_component" type="uint8_t">Component ID</field>
-	    <field name="session" type="uint8_t">0: stop, 1: start or keep it up //Session control e.g. show/hide lens</field>
-	    <field name="zoom_pos" type="uint8_t">1 to N //Zoom's absolute position (0 means ignore)</field>
-	    <field name="zoom_step" type="int8_t">-100 to 100 //Zooming step value to offset zoom from the current position</field>
-	    <field name="focus_lock" type="uint8_t">0: unlock focus or keep unlocked, 1: lock focus or keep locked, 3: re-lock focus</field>
-	    <field name="shot" type="uint8_t">0: ignore, 1: shot or start filming</field>
-	    <field name="command_id" type="uint8_t">Command Identity (incremental loop: 0 to 255)//A command sent multiple times will be executed or pooled just once</field>
-	    <field name="extra_param" type="uint8_t">Extra parameters enumeration (0 means ignore)</field>
-	    <field name="extra_value" type="float">Correspondent value to given extra_param</field>
-	  </message>
+    <message name="DIGICAM_CONTROL" id="155">
+      <description>Control on-board Camera Control System to take shots.</description>
+      <field name="target_system" type="uint8_t">System ID</field>
+      <field name="target_component" type="uint8_t">Component ID</field>
+      <field name="session" type="uint8_t">0: stop, 1: start or keep it up //Session control e.g. show/hide lens</field>
+      <field name="zoom_pos" type="uint8_t">1 to N //Zoom's absolute position (0 means ignore)</field>
+      <field name="zoom_step" type="int8_t">-100 to 100 //Zooming step value to offset zoom from the current position</field>
+      <field name="focus_lock" type="uint8_t">0: unlock focus or keep unlocked, 1: lock focus or keep locked, 3: re-lock focus</field>
+      <field name="shot" type="uint8_t">0: ignore, 1: shot or start filming</field>
+      <field name="command_id" type="uint8_t">Command Identity (incremental loop: 0 to 255)//A command sent multiple times will be executed or pooled just once</field>
+      <field name="extra_param" type="uint8_t">Extra parameters enumeration (0 means ignore)</field>
+      <field name="extra_value" type="float">Correspondent value to given extra_param</field>
+    </message>
 
-	  <!-- Camera Mount Messages -->
-	  <message name="MOUNT_CONFIGURE" id="156">
-	    <description>Message to configure a camera mount, directional antenna, etc.</description>
-	    <field name="target_system" type="uint8_t">System ID</field>
-	    <field name="target_component" type="uint8_t">Component ID</field>
-	    <field name="mount_mode" type="uint8_t" enum="MAV_MOUNT_MODE">mount operating mode (see MAV_MOUNT_MODE enum)</field>
-	    <field name="stab_roll" type="uint8_t">(1 = yes, 0 = no)</field>
-	    <field name="stab_pitch" type="uint8_t">(1 = yes, 0 = no)</field>
-	    <field name="stab_yaw" type="uint8_t">(1 = yes, 0 = no)</field>
-	  </message>
-    
-	  <message name="MOUNT_CONTROL" id="157">
-	    <description>Message to control a camera mount, directional antenna, etc.</description>
-	    <field name="target_system" type="uint8_t">System ID</field>
-	    <field name="target_component" type="uint8_t">Component ID</field>
-	    <field name="input_a" type="int32_t">pitch(deg*100) or lat, depending on mount mode</field>
-	    <field name="input_b" type="int32_t">roll(deg*100) or lon depending on mount mode</field>
-	    <field name="input_c" type="int32_t">yaw(deg*100) or alt (in cm) depending on mount mode</field>
-	    <field name="save_position" type="uint8_t">if "1" it will save current trimmed position on EEPROM (just valid for NEUTRAL and LANDING)</field>
-	  </message>
+    <!-- Camera Mount Messages -->
+    <message name="MOUNT_CONFIGURE" id="156">
+      <description>Message to configure a camera mount, directional antenna, etc.</description>
+      <field name="target_system" type="uint8_t">System ID</field>
+      <field name="target_component" type="uint8_t">Component ID</field>
+      <field name="mount_mode" type="uint8_t" enum="MAV_MOUNT_MODE">mount operating mode (see MAV_MOUNT_MODE enum)</field>
+      <field name="stab_roll" type="uint8_t">(1 = yes, 0 = no)</field>
+      <field name="stab_pitch" type="uint8_t">(1 = yes, 0 = no)</field>
+      <field name="stab_yaw" type="uint8_t">(1 = yes, 0 = no)</field>
+    </message>
 
-	  <message name="MOUNT_STATUS" id="158">
-	    <description>Message with some status from APM to GCS about camera or antenna mount</description>
-	    <field name="target_system" type="uint8_t">System ID</field>
-	    <field name="target_component" type="uint8_t">Component ID</field>
-	    <field name="pointing_a" type="int32_t">pitch(deg*100)</field>
-	    <field name="pointing_b" type="int32_t">roll(deg*100)</field>
-	    <field name="pointing_c" type="int32_t">yaw(deg*100)</field>
-	  </message>
+    <message name="MOUNT_CONTROL" id="157">
+      <description>Message to control a camera mount, directional antenna, etc.</description>
+      <field name="target_system" type="uint8_t">System ID</field>
+      <field name="target_component" type="uint8_t">Component ID</field>
+      <field name="input_a" type="int32_t">pitch(deg*100) or lat, depending on mount mode</field>
+      <field name="input_b" type="int32_t">roll(deg*100) or lon depending on mount mode</field>
+      <field name="input_c" type="int32_t">yaw(deg*100) or alt (in cm) depending on mount mode</field>
+      <field name="save_position" type="uint8_t">if "1" it will save current trimmed position on EEPROM (just valid for NEUTRAL and LANDING)</field>
+    </message>
 
-	  <!-- geo-fence messages -->
-	  <message name="FENCE_POINT" id="160">
-	    <description>A fence point. Used to set a point when from
-	      GCS -> MAV. Also used to return a point from MAV -> GCS</description>
-	    <field name="target_system" type="uint8_t">System ID</field>      
-	    <field name="target_component" type="uint8_t">Component ID</field>
-	    <field name="idx" type="uint8_t">point index (first point is 1, 0 is for return point)</field>
-	    <field name="count" type="uint8_t">total number of points (for sanity checking)</field>
-	    <field name="lat" type="float">Latitude of point</field>
-	    <field name="lng" type="float">Longitude of point</field>
-	  </message>
+    <message name="MOUNT_STATUS" id="158">
+      <description>Message with some status from APM to GCS about camera or antenna mount</description>
+      <field name="target_system" type="uint8_t">System ID</field>
+      <field name="target_component" type="uint8_t">Component ID</field>
+      <field name="pointing_a" type="int32_t">pitch(deg*100)</field>
+      <field name="pointing_b" type="int32_t">roll(deg*100)</field>
+      <field name="pointing_c" type="int32_t">yaw(deg*100)</field>
+    </message>
 
-	  <message name="FENCE_FETCH_POINT" id="161">
-	    <description>Request a current fence point from MAV</description>
-	    <field name="target_system" type="uint8_t">System ID</field>      
-	    <field name="target_component" type="uint8_t">Component ID</field>
-	    <field name="idx" type="uint8_t">point index (first point is 1, 0 is for return point)</field>
-	  </message>
+    <!-- geo-fence messages -->
+    <message name="FENCE_POINT" id="160">
+      <description>A fence point. Used to set a point when from
+        GCS -> MAV. Also used to return a point from MAV -> GCS</description>
+      <field name="target_system" type="uint8_t">System ID</field>
+      <field name="target_component" type="uint8_t">Component ID</field>
+      <field name="idx" type="uint8_t">point index (first point is 1, 0 is for return point)</field>
+      <field name="count" type="uint8_t">total number of points (for sanity checking)</field>
+      <field name="lat" type="float">Latitude of point</field>
+      <field name="lng" type="float">Longitude of point</field>
+    </message>
 
-	  <message name="FENCE_STATUS" id="162">
-	    <description>Status of geo-fencing. Sent in extended
-	    status stream when fencing enabled</description>
-	    <field name="breach_status" type="uint8_t">0 if currently inside fence, 1 if outside</field>
-	    <field name="breach_count" type="uint16_t">number of fence breaches</field>
-	    <field name="breach_type" type="uint8_t" enum="FENCE_BREACH">last breach type (see FENCE_BREACH_* enum)</field>
-	    <field name="breach_time" type="uint32_t">time of last breach in milliseconds since boot</field>
-	  </message>
 
-	  <message name="AHRS" id="163">
-	    <description>Status of DCM attitude estimator</description>
+    <message name="FENCE_FETCH_POINT" id="161">
+      <description>Request a current fence point from MAV</description>
+      <field name="target_system" type="uint8_t">System ID</field>
+      <field name="target_component" type="uint8_t">Component ID</field>
+      <field name="idx" type="uint8_t">point index (first point is 1, 0 is for return point)</field>
+    </message>
+
+
+
+
+    <message name="FENCE_STATUS" id="162">
+      <description>Status of geo-fencing. Sent in extended
+      status stream when fencing enabled</description>
+      <field name="breach_status" type="uint8_t">0 if currently inside fence, 1 if outside</field>
+      <field name="breach_count" type="uint16_t">number of fence breaches</field>
+      <field name="breach_type" type="uint8_t" enum="FENCE_BREACH">last breach type (see FENCE_BREACH_* enum)</field>
+      <field name="breach_time" type="uint32_t">time of last breach in milliseconds since boot</field>
+    </message>
+
+    <message name="AHRS" id="163">
+      <description>Status of DCM attitude estimator</description>
             <field type="float" name="omegaIx">X gyro drift estimate rad/s</field>
             <field type="float" name="omegaIy">Y gyro drift estimate rad/s</field>
             <field type="float" name="omegaIz">Z gyro drift estimate rad/s</field>
@@ -907,10 +974,10 @@
             <field type="float" name="renorm_val">average renormalisation value</field>
             <field type="float" name="error_rp">average error_roll_pitch value</field>
             <field type="float" name="error_yaw">average error_yaw value</field>
-	  </message>
+    </message>
 
-	  <message name="SIMSTATE" id="164">
-	    <description>Status of simulation environment, if used</description>
+    <message name="SIMSTATE" id="164">
+      <description>Status of simulation environment, if used</description>
             <field type="float" name="roll">Roll angle (rad)</field>
             <field type="float" name="pitch">Pitch angle (rad)</field>
             <field type="float" name="yaw">Yaw angle (rad)</field>
@@ -922,83 +989,83 @@
             <field type="float" name="zgyro">Angular speed around Z axis rad/s</field>
             <field type="int32_t" name="lat">Latitude in degrees * 1E7</field>
             <field type="int32_t" name="lng">Longitude in degrees * 1E7</field>
-	  </message>
+    </message>
 
-	  <message name="HWSTATUS" id="165">
-	    <description>Status of key hardware</description>
+    <message name="HWSTATUS" id="165">
+      <description>Status of key hardware</description>
             <field type="uint16_t" name="Vcc">board voltage (mV)</field>
             <field type="uint8_t"  name="I2Cerr">I2C error count</field>
-	  </message>
+    </message>
 
-	  <message name="RADIO" id="166">
-	    <description>Status generated by radio</description>
+    <message name="RADIO" id="166">
+      <description>Status generated by radio</description>
             <field type="uint8_t" name="rssi">local signal strength</field>
             <field type="uint8_t" name="remrssi">remote signal strength</field>
-	    <field type="uint8_t" name="txbuf">how full the tx buffer is as a percentage</field>
+            <field type="uint8_t" name="txbuf">how full the tx buffer is as a percentage</field>
             <field type="uint8_t" name="noise">background noise level</field>
             <field type="uint8_t" name="remnoise">remote background noise level</field>
-	    <field type="uint16_t" name="rxerrors">receive errors</field>
-	    <field type="uint16_t" name="fixed">count of error corrected packets</field>
-	  </message>
-	  
-	  	  <!--  AP_Limits status -->
+      <field type="uint16_t" name="rxerrors">receive errors</field>
+      <field type="uint16_t" name="fixed">count of error corrected packets</field>
+    </message>
 
-	  <message name="LIMITS_STATUS" id="167">
-	    <description>Status of AP_Limits. Sent in extended
-	    status stream when AP_Limits is enabled</description>
-	    <field name="limits_state" type="uint8_t" enum="LIMITS_STATE">state of AP_Limits, (see enum LimitState, LIMITS_STATE)</field>
-	    <field name="last_trigger" type="uint32_t">time of last breach in milliseconds since boot</field>
-	    <field name="last_action" type="uint32_t">time of last recovery action in milliseconds since boot</field>
-	    <field name="last_recovery" type="uint32_t">time of last successful recovery in milliseconds since boot</field>
-	    <field name="last_clear" type="uint32_t">time of last all-clear in milliseconds since boot</field>
-	    <field name="breach_count" type="uint16_t">number of fence breaches</field>
-	    <field name="mods_enabled" type="uint8_t">AP_Limit_Module bitfield of enabled modules, (see enum moduleid or LIMIT_MODULE)</field>
-	    <field name="mods_required" type="uint8_t">AP_Limit_Module bitfield of required modules, (see enum moduleid or LIMIT_MODULE)</field>
-	    <field name="mods_triggered" type="uint8_t">AP_Limit_Module bitfield of triggered modules, (see enum moduleid or LIMIT_MODULE)</field>	    
-	  </message>
 
-	  <message name="WIND" id="168">
-	    <description>Wind estimation</description>
+        <!--  AP_Limits status -->
+
+    <message name="LIMITS_STATUS" id="167">
+      <description>Status of AP_Limits. Sent in extended status stream when AP_Limits is enabled</description>
+            <field name="limits_state" type="uint8_t" enum="LIMITS_STATE">state of AP_Limits, (see enum LimitState, LIMITS_STATE)</field>
+            <field name="last_trigger" type="uint32_t">time of last breach in milliseconds since boot</field>
+            <field name="last_action" type="uint32_t">time of last recovery action in milliseconds since boot</field>
+            <field name="last_recovery" type="uint32_t">time of last successful recovery in milliseconds since boot</field>
+            <field name="last_clear" type="uint32_t">time of last all-clear in milliseconds since boot</field>
+            <field name="breach_count" type="uint16_t">number of fence breaches</field>
+            <field name="mods_enabled" type="uint8_t">AP_Limit_Module bitfield of enabled modules, (see enum moduleid or LIMIT_MODULE)</field>
+            <field name="mods_required" type="uint8_t">AP_Limit_Module bitfield of required modules, (see enum moduleid or LIMIT_MODULE)</field>
+            <field name="mods_triggered" type="uint8_t">AP_Limit_Module bitfield of triggered modules, (see enum moduleid or LIMIT_MODULE)</field>
+    </message>
+
+    <message name="WIND" id="168">
+      <description>Wind estimation</description>
             <field type="float" name="direction">wind direction that wind is coming from (degrees)</field>
             <field type="float" name="speed">wind speed in ground plane (m/s)</field>
             <field type="float" name="speed_z">vertical wind speed (m/s)</field>
-	  </message>
+    </message>
 
-	  <message name="DATA16" id="169">
-	    <description>Data packet, size 16</description>
-	    <field type="uint8_t" name="type">data type</field>
-	    <field type="uint8_t" name="len">data length</field>
-	    <field type="uint8_t[16]" name="data">raw data</field>
-	  </message>
+    <message name="DATA16" id="169">
+      <description>Data packet, size 16</description>
+      <field type="uint8_t" name="type">data type</field>
+      <field type="uint8_t" name="len">data length</field>
+      <field type="uint8_t[16]" name="data">raw data</field>
+    </message>
 
-	  <message name="DATA32" id="170">
-	    <description>Data packet, size 32</description>
-	    <field type="uint8_t" name="type">data type</field>
-	    <field type="uint8_t" name="len">data length</field>
-	    <field type="uint8_t[32]" name="data">raw data</field>
-	  </message>
+    <message name="DATA32" id="170">
+      <description>Data packet, size 32</description>
+      <field type="uint8_t" name="type">data type</field>
+      <field type="uint8_t" name="len">data length</field>
+      <field type="uint8_t[32]" name="data">raw data</field>
+    </message>
 
-	  <message name="DATA64" id="171">
-	    <description>Data packet, size 64</description>
-	    <field type="uint8_t" name="type">data type</field>
-	    <field type="uint8_t" name="len">data length</field>
-	    <field type="uint8_t[64]" name="data">raw data</field>
-	  </message>
+    <message name="DATA64" id="171">
+      <description>Data packet, size 64</description>
+      <field type="uint8_t" name="type">data type</field>
+      <field type="uint8_t" name="len">data length</field>
+      <field type="uint8_t[64]" name="data">raw data</field>
+    </message>
 
-	  <message name="DATA96" id="172">
-	    <description>Data packet, size 96</description>
-	    <field type="uint8_t" name="type">data type</field>
-	    <field type="uint8_t" name="len">data length</field>
-	    <field type="uint8_t[96]" name="data">raw data</field>
-	  </message>
+    <message name="DATA96" id="172">
+      <description>Data packet, size 96</description>
+      <field type="uint8_t" name="type">data type</field>
+      <field type="uint8_t" name="len">data length</field>
+      <field type="uint8_t[96]" name="data">raw data</field>
+    </message>
 
-	  <message name="RANGEFINDER" id="173">
-	    <description>Rangefinder reporting</description>
-	    <field type="float" name="distance">distance in meters</field>
-	    <field type="float" name="voltage">raw voltage if available, zero otherwise</field>
-	  </message>
+    <message name="RANGEFINDER" id="173">
+      <description>Rangefinder reporting</description>
+      <field type="float" name="distance">distance in meters</field>
+      <field type="float" name="voltage">raw voltage if available, zero otherwise</field>
+    </message>
 
-	  <message name="AIRSPEED_AUTOCAL" id="174">
+    <message name="AIRSPEED_AUTOCAL" id="174">
             <description>Airspeed auto-calibration</description>
             <field type="float" name="vx">GPS velocity north m/s</field>
             <field type="float" name="vy">GPS velocity east m/s</field>
@@ -1015,24 +1082,24 @@
           </message>
 
       <!-- rally point messages -->
-	  <message name="RALLY_POINT" id="175">
-	    <description>A rally point. Used to set a point when from GCS -> MAV. Also used to return a point from MAV -> GCS</description>
-	    <field name="target_system" type="uint8_t">System ID</field>      
-	    <field name="target_component" type="uint8_t">Component ID</field>
-	    <field name="idx" type="uint8_t">point index (first point is 0)</field>
-	    <field name="count" type="uint8_t">total number of points (for sanity checking)</field>
-	    <field name="lat" type="int32_t">Latitude of point in degrees * 1E7</field>
+    <message name="RALLY_POINT" id="175">
+      <description>A rally point. Used to set a point when from GCS -> MAV. Also used to return a point from MAV -> GCS</description>
+      <field name="target_system" type="uint8_t">System ID</field>
+      <field name="target_component" type="uint8_t">Component ID</field>
+      <field name="idx" type="uint8_t">point index (first point is 0)</field>
+      <field name="count" type="uint8_t">total number of points (for sanity checking)</field>
+      <field name="lat" type="int32_t">Latitude of point in degrees * 1E7</field>
             <field name="lng" type="int32_t">Longitude of point in degrees * 1E7</field>
             <field name="alt" type="int16_t">Transit / loiter altitude in meters relative to home</field>
             <!-- Path planned landings are still in the future, but we want these fields ready: -->
             <field name="break_alt" type="int16_t">Break altitude in meters relative to home</field>
             <field name="land_dir" type="uint16_t">Heading to aim for when landing. In centi-degrees.</field>
             <field name="flags" type="uint8_t">See RALLY_FLAGS enum for definition of the bitmask.</field>
-	  </message>
+    </message>
 
           <message name="RALLY_FETCH_POINT" id="176">
             <description>Request a current rally point from MAV. MAV should respond with a RALLY_POINT message. MAV should not respond if the request is invalid.</description>
-            <field name="target_system" type="uint8_t">System ID</field>      
+            <field name="target_system" type="uint8_t">System ID</field>
             <field name="target_component" type="uint8_t">Component ID</field>
             <field name="idx" type="uint8_t">point index (first point is 0)</field>
           </message>
@@ -1048,40 +1115,40 @@
           </message>
 
 <!-- Coming soon
-      <message name="RALLY_LAND_POINT" id="177"> 
+      <message name="RALLY_LAND_POINT" id="177">
          <description>A rally landing point.  An aircraft loitering at a rally point may choose one of these points to land at.</description>
-         <field name="target_system" type="uint8_t">System ID</field>      
-	     <field name="target_component" type="uint8_t">Component ID</field>
-	     <field name="idx" type="uint8_t">point index (first point is 0)</field>
-	     <field name="count" type="uint8_t">total number of points (for sanity checking)</field>
-	     <field name="lat" type="int32_t">Latitude of point</field>
+         <field name="target_system" type="uint8_t">System ID</field>
+       <field name="target_component" type="uint8_t">Component ID</field>
+       <field name="idx" type="uint8_t">point index (first point is 0)</field>
+       <field name="count" type="uint8_t">total number of points (for sanity checking)</field>
+       <field name="lat" type="int32_t">Latitude of point</field>
          <field name="lng" type="int32_t">Longitude of point</field>
          <field name="alt" type="uint16_t">Ground AGL (usually 0)</field>
      </message>
 
-	   <message name="RALLY_LAND_FETCH_POINT" id="178">
+     <message name="RALLY_LAND_FETCH_POINT" id="178">
          <description>Request a current rally land point from MAV</description>
-	     <field name="target_system" type="uint8_t">System ID</field>      
-	     <field name="target_component" type="uint8_t">Component ID</field>
-	     <field name="idx" type="uint8_t">point index (first point is 0)</field>
+       <field name="target_system" type="uint8_t">System ID</field>
+       <field name="target_component" type="uint8_t">Component ID</field>
+       <field name="idx" type="uint8_t">point index (first point is 0)</field>
       </message>
 -->
 
-	  <message name="AHRS2" id="178">
-	    <description>Status of secondary AHRS filter if available</description>
+    <message name="AHRS2" id="178">
+      <description>Status of secondary AHRS filter if available</description>
             <field type="float" name="roll">Roll angle (rad)</field>
             <field type="float" name="pitch">Pitch angle (rad)</field>
             <field type="float" name="yaw">Yaw angle (rad)</field>
             <field type="float" name="altitude">Altitude (MSL)</field>
             <field type="int32_t" name="lat">Latitude in degrees * 1E7</field>
             <field type="int32_t" name="lng">Longitude in degrees * 1E7</field>
-	  </message>
+    </message>
 
   <!-- camera event message from CCB to autopilot: for image trigger events but also things like heartbeat, error, low power, full card, etc -->
     <message name="CAMERA_STATUS" id="179">
         <description>Camera Event</description>
-        <field name="time_usec" type="uint64_t">Image timestamp (microseconds since UNIX epoch, according to camera clock)</field>    
-        <field name="target_system" type="uint8_t" >System ID</field>   <!-- support multiple concurrent vehicles -->  
+        <field name="time_usec" type="uint64_t">Image timestamp (microseconds since UNIX epoch, according to camera clock)</field>
+        <field name="target_system" type="uint8_t" >System ID</field>   <!-- support multiple concurrent vehicles -->
         <field name="cam_idx"   type="uint8_t" >Camera ID</field>       <!-- component ID, to support multiple cameras -->
         <field name="img_idx"   type="uint16_t" >Image index</field>    <!-- per camera image index, should be unique+sequential within a mission, preferably non-wrapping -->
         <field name="event_id"  type="uint8_t" >See CAMERA_STATUS_TYPES enum for definition of the bitmask</field>
@@ -1202,6 +1269,18 @@
         <field name="pos_vert_variance" type="float">Vertical Position variance</field>
         <field name="compass_variance" type="float">Compass variance</field>
         <field name="terrain_alt_variance" type="float">Terrain Altitude variance</field>
+    </message>
+
+    <!-- realtime PID tuning message -->
+    <message name="PID_TUNING" id="194">
+        <description>PID tuning information</description>
+        <field name="axis" type="uint8_t" enum="PID_TUNING_AXIS">axis</field>
+        <field name="desired" type="float">desired rate (degrees/s)</field>
+        <field name="achieved" type="float">achieved rate (degrees/s)</field>
+        <field name="FF" type="float">FF component</field>
+        <field name="P" type="float">P component</field>
+        <field name="I" type="float">I component</field>
+        <field name="D" type="float">D component</field>
     </message>
 
     <message name="GIMBAL_REPORT" id="200">
@@ -1357,7 +1436,6 @@
         <field name="el_torque_cmd" type="int16_t">Elevation Torque Command</field>
         <field name="az_torque_cmd" type="int16_t">Azimuth Torque Command</field>
     </message>
-    <!-- 214 RESERVED for more GIMBAL -->
 
     <!-- GoPro Messages -->
     <message name="GOPRO_HEARTBEAT" id="215">
@@ -1419,5 +1497,4 @@
         <field type="uint8_t" name="ekf_check_mask">Which fields pass EKF checks</field>
     </message>
 
-     </messages>
-</mavlink>
+     </messages> </mavlink>
