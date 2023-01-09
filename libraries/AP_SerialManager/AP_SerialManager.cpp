@@ -646,6 +646,8 @@ int8_t AP_SerialManager::find_portnum(enum SerialProtocol protocol, uint8_t inst
     return int8_t(_state - &state[0]);
 }
 
+
+
 // get_serial_by_id - gets serial by serial id
 AP_HAL::UARTDriver *AP_SerialManager::get_serial_by_id(uint8_t id)
 {
