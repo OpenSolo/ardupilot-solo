@@ -128,14 +128,6 @@ bool GCS_MAVLINK::init(uint8_t instance)
         return false;
     }
 
-    // and init the gcs instance
-
-    // whether this port is considered "private" is stored on the uart
-    // rather than in our own parameters:
-    if (uartstate->option_enabled(AP_HAL::UARTDriver::OPTION_MAVLINK_NO_FORWARD)) {
-        set_channel_private(chan);
-    }
-
     /*
       Now try to cope with SiK radios that may be stuck in bootloader
       mode because CTS was held while powering on. This tells the
