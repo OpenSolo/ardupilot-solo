@@ -163,7 +163,7 @@ void AP_Camera::trigger_pic()
     case CamTrigType::mount: {
         AP_Mount* mount = AP::mount();
         if (mount != nullptr) {
-            mount->take_picture(0);
+            //mount->take_picture(0);
         }
         break;
     }
@@ -522,7 +522,7 @@ bool AP_Camera::record_video(bool start_recording)
     if (get_trigger_type() == CamTrigType::mount) {
         AP_Mount* mount = AP::mount();
         if (mount != nullptr) {
-            return mount->record_video(0, start_recording);
+            //return mount->record_video(0, start_recording);
         }
     }
 #endif
@@ -538,7 +538,7 @@ bool AP_Camera::set_zoom_step(int8_t zoom_step)
     if (get_trigger_type() == CamTrigType::mount) {
         AP_Mount* mount = AP::mount();
         if (mount != nullptr) {
-            return mount->set_zoom_step(0, zoom_step);
+            //return mount->set_zoom_step(0, zoom_step);
         }
     }
 #endif
@@ -554,7 +554,7 @@ bool AP_Camera::set_manual_focus_step(int8_t focus_step)
     if (get_trigger_type() == CamTrigType::mount) {
         AP_Mount* mount = AP::mount();
         if (mount != nullptr) {
-            return mount->set_manual_focus_step(0, focus_step);
+            //return mount->set_manual_focus_step(0, focus_step);
         }
     }
 #endif
@@ -569,7 +569,7 @@ bool AP_Camera::set_auto_focus()
     if (get_trigger_type() == CamTrigType::mount) {
         AP_Mount* mount = AP::mount();
         if (mount != nullptr) {
-            return mount->set_auto_focus(0);
+            //return mount->set_auto_focus(0);
         }
     }
 #endif

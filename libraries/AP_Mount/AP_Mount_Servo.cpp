@@ -26,7 +26,7 @@ void AP_Mount_Servo::update()
     switch (get_mode()) {
         // move mount to a "retracted position" or to a position where a fourth servo can retract the entire mount into the fuselage
         case MAV_MOUNT_MODE_RETRACT: {
-            _angle_bf_output_deg = _params.retract_angles.get();
+            _angle_bf_output_deg = _state._retract_angles.get();
 
             // initialise _angle_rad to smooth transition if user changes to RC_TARGETTING
             _angle_rad.roll = radians(_angle_bf_output_deg.x);
@@ -38,7 +38,7 @@ void AP_Mount_Servo::update()
 
         // move mount to a neutral position, typically pointing forward
         case MAV_MOUNT_MODE_NEUTRAL: {
-            _angle_bf_output_deg = _params.neutral_angles.get();
+            _angle_bf_output_deg = _state._neutral_angles.get();
 
             // initialise _angle_rad to smooth transition if user changes to RC_TARGETTING
             _angle_rad.roll = radians(_angle_bf_output_deg.x);
@@ -109,9 +109,9 @@ void AP_Mount_Servo::update()
     move_servo(_open_idx, mount_open, 0, 1);
 
     // write the results to the servos
-    move_servo(_roll_idx, _angle_bf_output_deg.x*10, _params.roll_angle_min*10, _params.roll_angle_max*10);
-    move_servo(_tilt_idx, _angle_bf_output_deg.y*10, _params.pitch_angle_min*10, _params.pitch_angle_max*10);
-    move_servo(_pan_idx,  _angle_bf_output_deg.z*10, _params.yaw_angle_min*10, _params.yaw_angle_max*10);
+    move_servo(_roll_idx, _angle_bf_output_deg.x*10, _state._roll_angle_min*0.1f, _state._roll_angle_max*0.1f);
+    move_servo(_tilt_idx, _angle_bf_output_deg.y*10, _state._tilt_angle_min*0.1f, _state._tilt_angle_max*0.1f);
+    move_servo(_pan_idx,  _angle_bf_output_deg.z*10, _state._pan_angle_min*0.1f, _state._pan_angle_max*0.1f);
 }
 
 // returns true if this mount can control its pan (required for multicopters)
@@ -134,28 +134,46 @@ void AP_Mount_Servo::update_angle_outputs(const MountTarget& angle_rad)
 {
     const AP_AHRS &ahrs = AP::ahrs();
 
-    // roll and pitch are based on the ahrs roll and pitch angle plus any requested angle
-    _angle_bf_output_deg.x = degrees(angle_rad.roll);
-    _angle_bf_output_deg.y = degrees(angle_rad.pitch);
-    _angle_bf_output_deg.z = degrees(get_bf_yaw_angle(angle_rad));
-    if (requires_stabilization) {
-        _angle_bf_output_deg.x -= degrees(ahrs.roll);
-        _angle_bf_output_deg.y -= degrees(ahrs.pitch);
-    }
+    // only do the full 3D frame transform if we are stabilising yaw
+    if (_state._stab_pan) {
+        Matrix3f m;                         // 3 x 3 rotation matrix used as temporary variable in calculations
+        Matrix3f ef_to_cam;                 // rotation matrix from earth-frame to camera. Desired camera from input.
+        Matrix3f gimbal_target_bf;          // rotation matrix from vehicle to camera then Euler angles to the servos
+        Vector3f gimbal_angle_bf_rad;       // gimbal angle targets in body-frame euler angles
+        m = ahrs.get_rotation_body_to_ned();
+        m.transpose();
+        ef_to_cam.from_euler(angle_rad.roll, angle_rad.pitch, get_ef_yaw_angle(angle_rad));
+        gimbal_target_bf = m * ef_to_cam;
+        gimbal_target_bf.to_euler(&gimbal_angle_bf_rad.x, &gimbal_angle_bf_rad.y, &gimbal_angle_bf_rad.z);
+        _angle_bf_output_deg.x = _state._stab_roll ? degrees(gimbal_angle_bf_rad.x) : degrees(angle_rad.roll);
+        _angle_bf_output_deg.y = _state._stab_tilt ? degrees(gimbal_angle_bf_rad.y) : degrees(angle_rad.pitch);
+        _angle_bf_output_deg.z = degrees(gimbal_angle_bf_rad.z);
+    } else {
+        // otherwise base roll and pitch on the ahrs roll and pitch angle plus any requested angle
+        _angle_bf_output_deg.x = degrees(angle_rad.roll);
+        _angle_bf_output_deg.y = degrees(angle_rad.pitch);
+        _angle_bf_output_deg.z = degrees(get_bf_yaw_angle(angle_rad));
+        if (_state._stab_roll) {
+            _angle_bf_output_deg.x -= degrees(ahrs.roll);
+        }
+        if (_state._stab_tilt) {
+            _angle_bf_output_deg.y -= degrees(ahrs.pitch);
+        }
 
-    // lead filter
-    const Vector3f &gyro = ahrs.get_gyro();
+        // lead filter
+        const Vector3f &gyro = ahrs.get_gyro();
 
-    if (requires_stabilization && !is_zero(_params.roll_stb_lead) && fabsf(ahrs.pitch) < M_PI/3.0f) {
-        // Compute rate of change of euler roll angle
-        float roll_rate = gyro.x + (ahrs.sin_pitch() / ahrs.cos_pitch()) * (gyro.y * ahrs.sin_roll() + gyro.z * ahrs.cos_roll());
-        _angle_bf_output_deg.x -= degrees(roll_rate) * _params.roll_stb_lead;
-    }
+        if (_state._stab_roll && !is_zero(_state._roll_stb_lead) && fabsf(ahrs.pitch) < M_PI/3.0f) {
+            // Compute rate of change of euler roll angle
+            float roll_rate = gyro.x + (ahrs.sin_pitch() / ahrs.cos_pitch()) * (gyro.y * ahrs.sin_roll() + gyro.z * ahrs.cos_roll());
+            _angle_bf_output_deg.x -= degrees(roll_rate) * _state._roll_stb_lead;
+        }
 
-    if (requires_stabilization && !is_zero(_params.pitch_stb_lead)) {
-        // Compute rate of change of euler pitch angle
-        float pitch_rate = ahrs.cos_pitch() * gyro.y - ahrs.sin_roll() * gyro.z;
-        _angle_bf_output_deg.y -= degrees(pitch_rate) * _params.pitch_stb_lead;
+        if (_state._stab_tilt && !is_zero(_state._pitch_stb_lead)) {
+            // Compute rate of change of euler pitch angle
+            float pitch_rate = ahrs.cos_pitch() * gyro.y - ahrs.sin_roll() * gyro.z;
+            _angle_bf_output_deg.y -= degrees(pitch_rate) * _state._pitch_stb_lead;
+        }
     }
 }
 

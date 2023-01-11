@@ -21,9 +21,8 @@ class AP_Mount_Servo : public AP_Mount_Backend
 {
 public:
     // Constructor
-    AP_Mount_Servo(AP_Mount &frontend, AP_Mount_Params &params, bool requires_stab, uint8_t instance):
-        AP_Mount_Backend(frontend, params, instance),
-        requires_stabilization(requires_stab),
+    AP_Mount_Servo(AP_Mount &frontend, AP_Mount::mount_state &state, uint8_t instance):
+        AP_Mount_Backend(frontend, state, instance),
         _roll_idx(SRV_Channel::k_none),
         _tilt_idx(SRV_Channel::k_none),
         _pan_idx(SRV_Channel::k_none),
@@ -55,9 +54,6 @@ private:
 
     ///  moves servo with the given function id to the specified angle.  all angles are in body-frame and degrees * 10
     void move_servo(uint8_t rc, int16_t angle, int16_t angle_min, int16_t angle_max);
-
-    /// Servo gimbals require stabilization, BrushlessPWM gimbals self-stabilize
-    const bool requires_stabilization;
 
     // SRV_Channel - different id numbers are used depending upon the instance number
     SRV_Channel::Aux_servo_function_t    _roll_idx;  // SRV_Channel mount roll function index

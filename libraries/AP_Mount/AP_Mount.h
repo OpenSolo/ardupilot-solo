@@ -14,7 +14,7 @@
 * Usage:	Use in main code to control	mounts attached to	*
 *			vehicle.										*
 *															*
-* Comments: All angles in degrees, distances in meters      *
+* Comments: All angles in degrees * 100, distances in meters*
 *			unless otherwise stated.						*
 ************************************************************/
 #pragma once
@@ -35,10 +35,9 @@
 #include <AP_Common/AP_Common.h>
 #include <AP_Common/Location.h>
 #include <GCS_MAVLink/GCS_MAVLink.h>
-#include "AP_Mount_Params.h"
 
 // maximum number of mounts
-#define AP_MOUNT_MAX_INSTANCES          2
+#define AP_MOUNT_MAX_INSTANCES          1
 
 // declare backend classes
 class AP_Mount_Backend;
@@ -48,7 +47,6 @@ class AP_Mount_Alexmos;
 class AP_Mount_SToRM32;
 class AP_Mount_SToRM32_serial;
 class AP_Mount_Gremsy;
-class AP_Mount_Siyi;
 
 /*
   This is a workaround to allow the MAVLink backend access to the
@@ -65,7 +63,6 @@ class AP_Mount
     friend class AP_Mount_SToRM32;
     friend class AP_Mount_SToRM32_serial;
     friend class AP_Mount_Gremsy;
-    friend class AP_Mount_Siyi;
 
 public:
     AP_Mount();
@@ -87,9 +84,7 @@ public:
         Mount_Type_Alexmos = 3,         /// Alexmos mount
         Mount_Type_SToRM32 = 4,         /// SToRM32 mount using MAVLink protocol
         Mount_Type_SToRM32_serial = 5,  /// SToRM32 mount using custom serial protocol
-        Mount_Type_Gremsy = 6,          /// Gremsy gimbal using MAVLink v2 Gimbal protocol
-        Mount_Type_BrushlessPWM = 7,    /// Brushless (stabilized) gimbal using PWM protocol
-        Mount_Type_Siyi = 8,            /// Siyi gimbal using custom serial protocol
+        Mount_Type_Gremsy = 6           /// Gremsy gimbal using MAVLink v2 Gimbal protocol
     };
 
     // init - detect and initialise all mounts
@@ -100,9 +95,6 @@ public:
 
     // used for gimbals that need to read INS data at full rate
     void update_fast();
-
-    // return primary instance
-    uint8_t get_primary() const { return _primary; }
 
     // get_mount_type - returns the type of mount
     AP_Mount::MountType get_mount_type() const { return get_mount_type(_primary); }
@@ -121,7 +113,7 @@ public:
     void set_mode(enum MAV_MOUNT_MODE mode) { return set_mode(_primary, mode); }
     void set_mode(uint8_t instance, enum MAV_MOUNT_MODE mode);
 
-    // set_mode_to_default - restores the mode to it's default mode held in the MNTx_DEFLT_MODE parameter
+    // set_mode_to_default - restores the mode to it's default mode held in the MNT_DEFLT_MODE parameter
     //      this operation requires 60us on a Pixhawk/PX4
     void set_mode_to_default() { set_mode_to_default(_primary); }
     void set_mode_to_default(uint8_t instance);
@@ -161,28 +153,6 @@ public:
     // any failure_msg returned will not include a prefix
     bool pre_arm_checks(char *failure_msg, uint8_t failure_msg_len);
 
-    //
-    // camera controls for gimbals that include a camera
-    //
-
-    // take a picture
-    bool take_picture(uint8_t instance);
-
-    // start or stop video recording
-    // set start_recording = true to start record, false to stop recording
-    bool record_video(uint8_t instance, bool start_recording);
-
-    // set camera zoom step
-    // zoom out = -1, hold = 0, zoom in = 1
-    bool set_zoom_step(uint8_t instance, int8_t zoom_step);
-
-    // set focus in, out or hold
-    // focus in = -1, focus hold = 0, focus out = 1
-    bool set_manual_focus_step(uint8_t instance, int8_t focus_step);
-
-    // auto focus
-    bool set_auto_focus(uint8_t instance);
-
     // parameter var table
     static const struct AP_Param::GroupInfo        var_info[];
 
@@ -190,13 +160,43 @@ protected:
 
     static AP_Mount *_singleton;
 
-    // parameters for backends
-    AP_Mount_Params _params[AP_MOUNT_MAX_INSTANCES];
+    // frontend parameters
+    AP_Int16            _rc_rate_max;       // Pilot rate control's maximum rate.  Set to zero to use angle control
 
     // front end members
     uint8_t             _num_instances;     // number of mounts instantiated
     uint8_t             _primary;           // primary mount
     AP_Mount_Backend    *_backends[AP_MOUNT_MAX_INSTANCES];         // pointers to instantiated mounts
+
+    // backend state including parameters
+    struct mount_state {
+        // Parameters
+        AP_Int8         _type;              // mount type (None, Servo or MAVLink, see MountType enum)
+        AP_Int8         _default_mode;      // default mode on startup and when control is returned from autopilot
+        AP_Int8         _stab_roll;         // 1 = mount should stabilize earth-frame roll axis, 0 = no stabilization
+        AP_Int8         _stab_tilt;         // 1 = mount should stabilize earth-frame pitch axis
+        AP_Int8         _stab_pan;          // 1 = mount should stabilize earth-frame yaw axis
+
+        // RC input channels from receiver used for direct angular input from pilot
+        AP_Int8         _roll_rc_in;        // pilot provides roll input on this channel
+        AP_Int8         _tilt_rc_in;        // pilot provides tilt input on this channel
+        AP_Int8         _pan_rc_in;         // pilot provides pan input on this channel
+
+        // Mount's physical limits
+        AP_Int16        _roll_angle_min;    // min roll in 0.01 degree units
+        AP_Int16        _roll_angle_max;    // max roll in 0.01 degree units
+        AP_Int16        _tilt_angle_min;    // min tilt in 0.01 degree units
+        AP_Int16        _tilt_angle_max;    // max tilt in 0.01 degree units
+        AP_Int16        _pan_angle_min;     // min pan in 0.01 degree units
+        AP_Int16        _pan_angle_max;     // max pan in 0.01 degree units
+
+        AP_Vector3f     _retract_angles;    // retracted position for mount, vector.x = roll vector.y = tilt, vector.z=pan
+        AP_Vector3f     _neutral_angles;    // neutral position for mount, vector.x = roll vector.y = tilt, vector.z=pan
+
+        AP_Float        _roll_stb_lead;     // roll lead control gain
+        AP_Float        _pitch_stb_lead;    // pitch lead control gain
+
+    } state[AP_MOUNT_MAX_INSTANCES];
 
 private:
     // Check if instance backend is ok

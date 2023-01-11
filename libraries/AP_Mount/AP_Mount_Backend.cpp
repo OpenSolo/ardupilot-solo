@@ -60,6 +60,9 @@ void AP_Mount_Backend::set_target_sysid(uint8_t sysid)
 void AP_Mount_Backend::handle_mount_configure(const mavlink_mount_configure_t &packet)
 {
     set_mode((MAV_MOUNT_MODE)packet.mount_mode);
+    _state._stab_roll.set(packet.stab_roll);
+    _state._stab_tilt.set(packet.stab_pitch);
+    _state._stab_pan.set(packet.stab_yaw);
 }
 
 // send a GIMBAL_DEVICE_ATTITUDE_STATUS message to GCS
@@ -205,9 +208,9 @@ bool AP_Mount_Backend::handle_global_position_int(uint8_t msg_sysid, const mavli
 // get pilot input (in the range -1 to +1) received through RC
 void AP_Mount_Backend::get_rc_input(float& roll_in, float& pitch_in, float& yaw_in) const
 {
-    const RC_Channel *roll_ch = rc().find_channel_for_option(_instance == 0 ? RC_Channel::AUX_FUNC::MOUNT1_ROLL : RC_Channel::AUX_FUNC::MOUNT2_ROLL);
-    const RC_Channel *pitch_ch = rc().find_channel_for_option(_instance == 0 ? RC_Channel::AUX_FUNC::MOUNT1_PITCH : RC_Channel::AUX_FUNC::MOUNT2_PITCH);
-    const RC_Channel *yaw_ch = rc().find_channel_for_option(_instance == 0 ? RC_Channel::AUX_FUNC::MOUNT1_YAW : RC_Channel::AUX_FUNC::MOUNT2_YAW);
+    const RC_Channel *roll_ch = rc().channel(_state._roll_rc_in - 1);
+    const RC_Channel *pitch_ch = rc().channel(_state._tilt_rc_in - 1);
+    const RC_Channel *yaw_ch = rc().channel(_state._pan_rc_in - 1);
 
     roll_in = 0;
     if ((roll_ch != nullptr) && (roll_ch->get_radio_in() > 0)) {
@@ -230,7 +233,7 @@ void AP_Mount_Backend::get_rc_input(float& roll_in, float& pitch_in, float& yaw_
 bool AP_Mount_Backend::get_rc_rate_target(MountTarget& rate_rads) const
 {
     // exit immediately if RC is not providing rate targets
-    if (_params.rc_rate_max <= 0) {
+    if (_frontend._rc_rate_max <= 0) {
         return false;
     }
 
@@ -239,7 +242,7 @@ bool AP_Mount_Backend::get_rc_rate_target(MountTarget& rate_rads) const
     get_rc_input(roll_in, pitch_in, yaw_in);
 
     // calculate rates
-    const float rc_rate_max_rads = radians(_params.rc_rate_max.get());
+    const float rc_rate_max_rads = radians(_frontend._rc_rate_max.get());
     rate_rads.roll = roll_in * rc_rate_max_rads;
     rate_rads.pitch = pitch_in * rc_rate_max_rads;
     rate_rads.yaw = yaw_in * rc_rate_max_rads;
@@ -255,7 +258,7 @@ bool AP_Mount_Backend::get_rc_rate_target(MountTarget& rate_rads) const
 bool AP_Mount_Backend::get_rc_angle_target(MountTarget& angle_rad) const
 {
     // exit immediately if RC is not providing angle targets
-    if (_params.rc_rate_max > 0) {
+    if (_frontend._rc_rate_max > 0) {
         return false;
     }
 
@@ -264,10 +267,10 @@ bool AP_Mount_Backend::get_rc_angle_target(MountTarget& angle_rad) const
     get_rc_input(roll_in, pitch_in, yaw_in);
 
     // roll angle
-    angle_rad.roll = radians(((roll_in + 1.0f) * 0.5f * (_params.roll_angle_max - _params.roll_angle_min) + _params.roll_angle_min));
+    angle_rad.roll = radians(((roll_in + 1.0f) * 0.5f * (_state._roll_angle_max - _state._roll_angle_min) + _state._roll_angle_min)*0.01f);
 
     // pitch angle
-    angle_rad.pitch = radians(((pitch_in + 1.0f) * 0.5f * (_params.pitch_angle_max - _params.pitch_angle_min) + _params.pitch_angle_min));
+    angle_rad.pitch = radians(((pitch_in + 1.0f) * 0.5f * (_state._tilt_angle_max - _state._tilt_angle_min) + _state._tilt_angle_min)*0.01f);
 
     // yaw angle
     angle_rad.yaw_is_ef = _yaw_lock;
@@ -276,7 +279,7 @@ bool AP_Mount_Backend::get_rc_angle_target(MountTarget& angle_rad) const
         angle_rad.yaw = yaw_in * M_PI;
     } else {
         // yaw target in body frame so apply body frame limits
-        angle_rad.yaw = radians(((yaw_in + 1.0f) * 0.5f * (_params.yaw_angle_max - _params.yaw_angle_min) + _params.yaw_angle_min));
+        angle_rad.yaw = radians(((yaw_in + 1.0f) * 0.5f * (_state._pan_angle_max - _state._pan_angle_min) + _state._pan_angle_min)*0.01f);
     }
 
     return true;
@@ -359,8 +362,8 @@ float AP_Mount_Backend::get_ef_yaw_angle(const MountTarget& angle_rad) const
 void AP_Mount_Backend::update_angle_target_from_rate(const MountTarget& rate_rad, MountTarget& angle_rad) const
 {
     // update roll and pitch angles and apply limits
-    angle_rad.roll = constrain_float(angle_rad.roll + rate_rad.roll * AP_MOUNT_UPDATE_DT, radians(_params.roll_angle_min), radians(_params.roll_angle_max));
-    angle_rad.pitch = constrain_float(angle_rad.pitch + rate_rad.pitch * AP_MOUNT_UPDATE_DT, radians(_params.pitch_angle_min), radians(_params.pitch_angle_max));
+    angle_rad.roll = constrain_float(angle_rad.roll + rate_rad.roll * AP_MOUNT_UPDATE_DT, radians(_state._roll_angle_min * 0.01), radians(_state._roll_angle_max * 0.01));
+    angle_rad.pitch = constrain_float(angle_rad.pitch + rate_rad.pitch * AP_MOUNT_UPDATE_DT, radians(_state._tilt_angle_min * 0.01), radians(_state._tilt_angle_max * 0.01));
 
     // ensure angle yaw frames matches rate yaw frame
     if (angle_rad.yaw_is_ef != rate_rad.yaw_is_ef) {
@@ -379,7 +382,7 @@ void AP_Mount_Backend::update_angle_target_from_rate(const MountTarget& rate_rad
         angle_rad.yaw = wrap_PI(angle_rad.yaw);
     } else {
         // if body-frame constrain yaw to body-frame limits
-        angle_rad.yaw = constrain_float(angle_rad.yaw, radians(_params.yaw_angle_min), radians(_params.yaw_angle_max));
+        angle_rad.yaw = constrain_float(angle_rad.yaw, radians(_state._pan_angle_min * 0.01), radians(_state._pan_angle_max * 0.01));
     }
 }
 

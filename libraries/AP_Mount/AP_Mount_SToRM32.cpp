@@ -9,8 +9,8 @@ extern const AP_HAL::HAL& hal;
 #define AP_MOUNT_STORM32_RESEND_MS  1000    // resend angle targets to gimbal once per second
 #define AP_MOUNT_STORM32_SEARCH_MS  60000   // search for gimbal for 1 minute after startup
 
-AP_Mount_SToRM32::AP_Mount_SToRM32(AP_Mount &frontend, AP_Mount_Params &params, uint8_t instance) :
-    AP_Mount_Backend(frontend, params, instance),
+AP_Mount_SToRM32::AP_Mount_SToRM32(AP_Mount &frontend, AP_Mount::mount_state &state, uint8_t instance) :
+    AP_Mount_Backend(frontend, state, instance),
     _chan(MAVLINK_COMM_0)
 {}
 
@@ -30,7 +30,7 @@ void AP_Mount_SToRM32::update()
     switch(get_mode()) {
         // move mount to a "retracted" position.  To-Do: remove support and replace with a relaxed mode?
         case MAV_MOUNT_MODE_RETRACT: {
-            const Vector3f &target = _params.retract_angles.get();
+            const Vector3f &target = _state._retract_angles.get();
             _angle_rad.roll = radians(target.x);
             _angle_rad.pitch = radians(target.y);
             _angle_rad.yaw = radians(target.z);
@@ -40,7 +40,7 @@ void AP_Mount_SToRM32::update()
 
         // move mount to a neutral position, typically pointing forward
         case MAV_MOUNT_MODE_NEUTRAL: {
-            const Vector3f &target = _params.neutral_angles.get();
+            const Vector3f &target = _state._neutral_angles.get();
             _angle_rad.roll = radians(target.x);
             _angle_rad.pitch = radians(target.y);
             _angle_rad.yaw = radians(target.z);
@@ -104,6 +104,18 @@ void AP_Mount_SToRM32::update()
     }
 }
 
+// set_mode - sets mount's mode
+void AP_Mount_SToRM32::set_mode(enum MAV_MOUNT_MODE mode)
+{
+    // exit immediately if not initialised
+    if (!_initialised) {
+        return;
+    }
+
+    // record the mode change
+    _mode = mode;
+}
+
 // get attitude as a quaternion.  returns true on success
 bool AP_Mount_SToRM32::get_attitude_quaternion(Quaternion& att_quat)
 {
@@ -124,10 +136,7 @@ void AP_Mount_SToRM32::find_gimbal()
         return;
     }
 
-    // we expect that instance 0 has compid = MAV_COMP_ID_GIMBAL, instance 1 has compid = MAV_COMP_ID_GIMBAL2, etc
-    uint8_t compid = (_instance == 0) ? MAV_COMP_ID_GIMBAL : MAV_COMP_ID_GIMBAL2 + (_instance - 1);
-    if (GCS_MAVLINK::find_by_mavtype_and_compid(MAV_TYPE_GIMBAL, compid, _sysid, _chan)) {
-        _compid = compid;
+    if (GCS_MAVLINK::find_by_mavtype(MAV_TYPE_GIMBAL, _sysid, _compid, _chan)) {
         _initialised = true;
     }
 }
