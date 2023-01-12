@@ -61,7 +61,7 @@ uint8_t GCS::statustext_send_channel_mask() const
     uint8_t ret = 0;
     ret |= GCS_MAVLINK::active_channel_mask();
     ret |= GCS_MAVLINK::streaming_channel_mask();
-    ret &= ~GCS_MAVLINK::private_channel_mask();
+    //ret &= ~GCS_MAVLINK::private_channel_mask();
     return ret;
 }
 

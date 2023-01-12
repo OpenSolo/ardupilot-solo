@@ -348,7 +348,7 @@ public:
     static uint8_t streaming_channel_mask(void) { return chan_is_streaming; }
 
     // return a bitmap of private channels
-    static uint8_t private_channel_mask(void) { return mavlink_private; }
+    static uint8_t private_channel_mask(void) { return 0; }
 
     // set a channel as private. Private channels get sent heartbeats, but
     // don't get broadcast packets or forwarded packets

@@ -107,13 +107,13 @@ bool MAVLink_routing::check_and_forward(mavlink_channel_t in_channel, const mavl
         return true;
     }
 
-    const bool from_private_channel = GCS_MAVLINK::is_private(in_channel);
+    //const bool from_private_channel = GCS_MAVLINK::is_private(in_channel);
 
     if (msg.msgid == MAVLINK_MSG_ID_HEARTBEAT) {
         // heartbeat needs special handling
-        if (!from_private_channel) {
+        //if (!from_private_channel) {
             handle_heartbeat(in_channel, msg);
-        }
+        //}
         return true;
     }
 
@@ -135,9 +135,9 @@ bool MAVLink_routing::check_and_forward(mavlink_channel_t in_channel, const mavl
     bool process_locally = match_system && match_component;
 
     // don't ever forward data from a private channel
-    if (from_private_channel) {
-        return process_locally;
-    }
+    //if (from_private_channel) {
+    //    return process_locally;
+    //}
 
     if (process_locally && !broadcast_system && !broadcast_component) {
         // nothing more to do - it can only be for us
@@ -339,7 +339,7 @@ void MAVLink_routing::learn_route(mavlink_channel_t in_channel, const mavlink_me
 */
 void MAVLink_routing::handle_heartbeat(mavlink_channel_t in_channel, const mavlink_message_t &msg)
 {
-    uint16_t mask = GCS_MAVLINK::active_channel_mask() & ~GCS_MAVLINK::private_channel_mask();
+    uint16_t mask = GCS_MAVLINK::active_channel_mask() ;//& ~GCS_MAVLINK::private_channel_mask();
 
     // don't send on the incoming channel. This should only matter if
     // the routing table is full
